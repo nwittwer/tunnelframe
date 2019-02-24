@@ -46,7 +46,7 @@ gulp.task('version-app:prompt-version', function (done) {
       }
 
       // Update the final ZIP path with the version
-      PATH_TO_MAC_ZIP = 'build/Reflex-' + NEXT_APP_VERSION + '-mac.zip'
+      PATH_TO_MAC_ZIP = 'build/Reflex-' + NEXT_APP_VERSION + '.dmg'
 
       done()
     })
