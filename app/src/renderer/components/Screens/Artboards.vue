@@ -28,19 +28,19 @@ export default {
   name: 'Artboards',
   components: {
     Artboard,
-    WelcomeScreen
+    WelcomeScreen,
   },
-  data () {
+  data() {
     return {
-      selectionInstance: {}
+      selectionInstance: {},
     }
   },
   computed: {
     ...mapState({
-      artboards: state => state.artboards.list,
-      selectedArtboards: state => state.selectedArtboards
+      artboards: (state) => state.artboards.list,
+      selectedArtboards: (state) => state.selectedArtboards,
     }),
-    ...mapGetters('interactions', ['isInteracting'])
+    ...mapGetters('interactions', ['isInteracting', 'currentContext']),
   },
   watch: {
     // TODO Consider enabling this once panzoom is a Vue plugin?
@@ -50,23 +50,37 @@ export default {
     //   });
     // }
   },
-  mounted () {
+  mounted() {
+    // TODO Create shortcut listener
+    // this._keyListener = function (e) {
+    //   if (e.ctrlKey || e.metaKey) {
+    //     e.preventDefault() // prevent normal event from happening
+    //     this.selectionInstance.enable() // enable selections
+    //   } else {
+    //     this.selectionInstance.disable()
+    //   }
+    // }
+
     this.selectionInstance = new SelectionArea({
       selectables: ['.artboard'], // All elements in this container can be selected
       boundaries: ['#canvas'], // The boundary
       // startareas: ['#canvas'],
       class: 'selection-area', // Class for the selection-area
       selectedClass: 'is-selected',
-      singleClick: true // Enable single-click selection
+      singleClick: true, // Enable single-click selection
     })
-      .on('beforestart', evt => {
+      .on('beforestart', (evt) => {
         // Prevent selections if the user is interacting with an artboard
-        console.info(
-          'Cannot interact with artboard while canvas is enabled. Please disable canvas.'
-        )
-        if (this.isInteracting) return false
+        if (this.isInteracting) {
+          console.info(
+            'Cannot interact with artboard while canvas is enabled. Please disable canvas.'
+          )
+          return false
+        }
+
+        // ONLY ALLOW DRAG SELECT WHEN "CMD/CTRL" is held
       })
-      .on('start', evt => {
+      .on('start', (evt) => {
         // Every non-ctrlKey causes a selection reset
         if (!evt.ctrlKey) {
           this.$store.dispatch('selectedArtboards/selectedArtboardsEmpty')
@@ -75,28 +89,28 @@ export default {
         // Update state
         this.$store.commit('interactions/interactionSetState', {
           key: 'isSelectingArea',
-          value: true
+          value: true,
         })
       })
       .on(
         'move',
         ({
           store: {
-            changed: { removed, added }
-          }
+            changed: { removed, added },
+          },
         }) => {
           /**
            * Only add / remove selected class to increase selection performance.
            */
 
           // Add
-          added.forEach(item => {
+          added.forEach((item) => {
             const id = item.getAttribute('artboard-id')
             this.$store.dispatch('selectedArtboards/selectedArtboardsAdd', id)
           })
 
           // Remove
-          removed.forEach(item => {
+          removed.forEach((item) => {
             const id = item.getAttribute('artboard-id')
             this.$store.dispatch(
               'selectedArtboards/selectedArtboardsRemove',
@@ -117,29 +131,29 @@ export default {
         // Update state
         this.$store.commit('interactions/interactionSetState', {
           key: 'isSelectingArea',
-          value: false
+          value: false,
         })
 
         // Push the new IDs
-        selected.forEach(item => {
+        selected.forEach((item) => {
           const id = item.getAttribute('artboard-id')
           this.$store.dispatch('selectedArtboards/selectedArtboardsAdd', id) // Add these items to the Store
         })
       })
   },
-  beforeDestroy () {
+  beforeDestroy() {
     this.selectionInstance.destroy()
   },
   methods: {
-    resize (artboard) {
+    resize(artboard) {
       this.$store.commit('artboards/resizeArtboard', artboard)
     },
-    fitToScreen () {
+    fitToScreen() {
       // TODO De-couple this call to the parent
       console.log('Artboards loaded', this.$parent)
       this.$parent.fitToScreen()
-    }
-  }
+    },
+  },
 }
 </script>
 

@@ -6,6 +6,8 @@
       :artboard-id="id"
       class="artboard"
       :class="{ 'is-hover': isHover, 'is-selected': isSelected }"
+      @mouseover="hoverStart(id)"
+      @mouseout="hoverEnd(id)"
       @click.right="rightClickHandler()"
     >
       <div class="artboard__top">
@@ -26,12 +28,16 @@
       <div class="artboard__keypoints" />
       <div
         class="artboard__content"
-        :class="{ 'layout--horizontal': state.horizontalLayout }"
+        :class="{
+          'layout--horizontal': state.horizontalLayout,
+          'is-hover': isHover,
+          'is-selected': isSelected,
+        }"
       >
         <WebPage
           :id="id"
           ref="frame"
-          :allow-interactions="canInteractWithArtboard"
+          :allow-interactions="canInteractWithWebContext"
           :style="{ height: height + 'px', width: width + 'px' }"
           @loadstart="state.isLoading = true"
           @loadend="state.isLoading = false"
@@ -46,9 +52,18 @@
             :y="scrollPosition.y"
           />
         </div>
-      </div>
-      <div class="artboard__handles">
-        <div class="handle__bottom" title="Resize" @mousedown="triggerResize" />
+        <div v-show="isHover" class="artboard__handles">
+          <div
+            class="handle_right"
+            title="Resize"
+            @mousedown="triggerResize($event, 'horizontal')"
+          />
+          <div
+            class="handle_bottom"
+            title="Resize"
+            @mousedown="triggerResize($event, 'vertical')"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -64,61 +79,61 @@ export default {
   name: 'Artboard',
   components: {
     WebPage,
-    CrossBrowserScreenshots
+    CrossBrowserScreenshots,
   },
   props: {
     title: {
       type: String,
-      default: 'Artboard'
+      default: 'Artboard',
     },
     id: {
       type: String,
-      default: '123'
+      default: '123',
     },
     height: {
       type: Number,
-      default: 0
+      default: 0,
     },
     width: {
       type: Number,
-      default: 0
+      default: 0,
     },
     selectedItems: {
       type: Array,
-      default: () => []
+      default: () => [],
     },
-    isVisible: Boolean
+    isVisible: Boolean,
   },
-  data () {
+  data() {
     return {
       state: {
         isLoading: false,
-        horizontalLayout: true
+        horizontalLayout: true,
       },
       scrollPosition: {
         x: 0,
-        y: 0
-      }
+        y: 0,
+      },
     }
   },
   computed: {
     ...mapState({
-      url: state => state.history.currentPage.url,
-      selectedArtboards: state => state.selectedArtboards,
-      hoverArtboards: state => state.hoverArtboards
+      url: (state) => state.history.currentPage.url,
+      selectedArtboards: (state) => state.selectedArtboards,
+      hoverArtboards: (state) => state.hoverArtboards,
     }),
     ...mapGetters('interactions', ['isInteracting']),
-    isHover () {
-      const isHover = this.hoverArtboards.filter(item => item === this.id)
+    isHover() {
+      const isHover = this.hoverArtboards.filter((item) => item === this.id)
       if (isHover.length) {
         return true
       } else {
         return false
       }
     },
-    isSelected () {
+    isSelected() {
       const isSelected = this.selectedArtboards.filter(
-        item => item === this.id
+        (item) => item === this.id
       )
       if (isSelected.length) {
         return true
@@ -131,18 +146,18 @@ export default {
      * artboard (WebView) when the artboard is selected
      * and the user is not dragging a selection area
      */
-    canInteractWithArtboard () {
+    canInteractWithWebContext() {
       if (this.isSelected === false) return false // Not selected!
-
       if (this.isSelected && this.isInteracting === false) {
+        this.$store.commit('interactions/setWebInteractionState', true) // Update global state
         return true // Can interact!
       }
-
+      this.$store.commit('interactions/setWebInteractionState', false) // Update global state
       return false // Otherwise, false
-    }
+    },
   },
 
-  mounted () {
+  mounted() {
     this.$nextTick(() => {
       // Remove any leftover selected artboards
       // @TODO: This should be done from VueX Store, or wiped before quitting
@@ -151,21 +166,21 @@ export default {
   },
 
   methods: {
-    updateScrollPosition ({ x, y }) {
+    updateScrollPosition({ x, y }) {
       this.scrollPosition.x = x
       this.scrollPosition.y = y
     },
-    rightClickHandler () {
+    rightClickHandler() {
       rightClickMenu(this.$store, {
         title: this.title,
         id: this.id,
         width: this.width,
         height: this.height,
-        isVisible: this.isVisible
+        isVisible: this.isVisible,
       })
     },
     // Limits the size of an artboard
-    validateArtboardSizeInput (name, value) {
+    validateArtboardSizeInput(name, value) {
       // @TODO: Refactor this into the size editor
       const minSize = 50
       const maxSize = 9999
@@ -199,14 +214,19 @@ export default {
         console.log('out of range')
       }
     },
-    triggerResize (e) {
-      console.log('should resize')
+    /**
+     * Resize an artboard/screen
+     * e = event
+     * direction = horizontal, vertical
+     */
+    triggerResize(event, direction) {
+      console.log('should resize', event, direction)
       const vm = this
 
       const parent = vm.$refs.artboard
       const resizable = parent
-      const startX = e.clientX
-      const startY = e.clientY
+      const startX = event.clientX
+      const startY = event.clientY
 
       const startWidth = parseInt(
         document.defaultView.getComputedStyle(resizable).width,
@@ -226,17 +246,17 @@ export default {
       //   this.$root.$panzoom.disable() // TODO: Cleaner solution that polluting document?
       // }
 
-      function doStart () {
+      function doStart() {
         // Update global state
         vm.$store.commit('interactions/interactionSetState', {
           key: 'isResizingArtboard',
-          value: true
+          value: true,
         })
       }
 
       // Resize objects
       let isDraggingTracker
-      function doDrag (e) {
+      function doDrag(e) {
         // This event needs to be debounced, as it's called on mousemove
         // Debounce via https://gomakethings.com/debouncing-your-javascript-events/
         if (isDraggingTracker) {
@@ -245,23 +265,33 @@ export default {
 
         // Setup the new requestAnimationFrame()
         isDraggingTracker = window.requestAnimationFrame(function () {
-          // Run our scroll functions
-          resizable.style.width = startWidth + e.clientX - startX + 'px'
-          resizable.style.height = startHeight + e.clientY - startY + 'px'
+          switch (direction) {
+            case 'horizontal':
+              // Run our scroll functions
+              resizable.style.width = startWidth + e.clientX - startX + 'px'
+              // Update the dimensions in the UI
+              vm.$emit('resize', {
+                id: vm.id,
+                width: parseInt(resizable.style.width, 10),
+                height: startHeight,
+              })
+              break
 
-          // Ignore pointer events on frames
-          // const frames = document.getElementsByClassName('frame')
-
-          // Update the dimensions in the UI
-          vm.$emit('resize', {
-            id: vm.id,
-            width: parseInt(resizable.style.width, 10),
-            height: parseInt(resizable.style.height, 10)
-          })
+            case 'vertical':
+              // Run our scroll functions
+              resizable.style.height = startHeight + e.clientY - startY + 'px'
+              // Update the dimensions in the UI
+              vm.$emit('resize', {
+                id: vm.id,
+                height: parseInt(resizable.style.height, 10),
+                width: startWidth,
+              })
+              break
+          }
         })
       }
 
-      function stopDrag () {
+      function stopDrag() {
         document.documentElement.removeEventListener(
           'mousedown',
           doStart,
@@ -279,17 +309,23 @@ export default {
         // Update global state
         vm.$store.commit('interactions/interactionSetState', {
           key: 'isResizingArtboard',
-          value: false
+          value: false,
         })
       }
-    }
-  }
+    },
+    hoverStart(id) {
+      this.$store.dispatch('hoverArtboards/hoverArtboardsAdd', id)
+    },
+    hoverEnd(id) {
+      this.$store.dispatch('hoverArtboards/hoverArtboardsRemove', id)
+    },
+  },
 }
 </script>
 
 <style lang="scss" scoped>
 @import '@/scss/_variables';
-$artboard-handle-height: 1rem;
+$artboard-handle-height: 1.5rem;
 
 .artboard-container {
   display: block;
@@ -301,8 +337,8 @@ $artboard-handle-height: 1rem;
 
 .artboard {
   padding: 1rem;
-  padding-right: 1.5rem;
-  padding-bottom: $artboard-handle-height * 3;
+  // padding-right: 1.5rem;
+  // padding-bottom: $artboard-handle-height * 3;
   border: 3px solid transparent;
   position: relative;
   display: block;
@@ -317,17 +353,6 @@ $artboard-handle-height: 1rem;
 
   &:first-child {
     margin-right: 3.5rem;
-  }
-
-  &:hover,
-  &.is-hover {
-    border-color: #929292;
-    cursor: pointer;
-  }
-
-  &.is-selected {
-    background: rgba(226, 239, 255, 0.63);
-    border-color: #2f82ea;
   }
 
   .artboard__top {
@@ -351,20 +376,41 @@ $artboard-handle-height: 1rem;
   }
 
   .artboard__content {
-    width: 100%;
-    height: 100%;
+    min-width: 100%;
+    width: auto;
+    min-height: 100%;
+    height: auto;
     position: relative;
-    border: 1px solid white;
+    border: 4px solid white;
+    border-radius: 1rem;
     box-sizing: border-box;
     // background: #ffffff;
     transition: all 100ms ease-out;
     // box-shadow: 0 4px 10px rgba(#000, 0.1);
-    overflow: visible;
+    z-index: 1;
+
+    &:hover,
+    &.is-hover {
+      border-color: #929292;
+      cursor: pointer;
+      box-shadow: 0 2rem 3rem rgba(#000, 0.15);
+    }
+
+    &.is-selected {
+      background: rgba(226, 239, 255, 0.63);
+      border-color: #2f82ea;
+    }
+
+    // Remove the rounded corners once selected
+    &.is-selected,
+    &.is-selected .frame {
+      border-radius: 0;
+    }
 
     .frame {
-      // min-width: 100%;
-      // min-height: 100%;
-      // display: block;
+      border-radius: 1rem;
+      overflow: hidden;
+      z-index: 1;
     }
 
     &.layout--horizontal {
@@ -386,26 +432,28 @@ $artboard-handle-height: 1rem;
     position: absolute;
     bottom: 0;
     right: 0;
+    height: 100%;
+    width: 100%;
+    z-index: 0;
 
-    .handle__bottom {
+    .handle_right,
+    .handle_bottom {
       position: absolute;
       display: flex;
       justify-content: center;
       align-items: center;
-      left: 0;
-      top: 0;
-      bottom: calc(-#{$artboard-handle-height} - 16px);
-      right: calc(-#{$artboard-handle-height} - 16px);
-      padding: 40px;
-      cursor: nwse-resize;
+      padding: 3rem;
+
+      &:hover {
+        background: rgba($accent-color, 0.1);
+      }
 
       &:hover:after {
         background: darken($accent-color, 20%);
       }
 
       &:active:after {
-        cursor: nwse-resize;
-        z-index: 1;
+        z-index: 0;
         background: none;
         border-color: $accent-color;
       }
@@ -419,8 +467,27 @@ $artboard-handle-height: 1rem;
         position: absolute;
         border-radius: 100%;
         border: 3px solid transparent;
-        z-index: 1;
+        z-index: 0;
       }
+    }
+
+    .handle_right {
+      right: calc(-#{$artboard-handle-height} * 4);
+      cursor: ew-resize;
+      height: 100%;
+      width: 0;
+      border-top-right-radius: 1rem;
+      border-bottom-right-radius: 1rem;
+    }
+
+    .handle_bottom {
+      left: 0;
+      bottom: calc(-#{$artboard-handle-height} * 4);
+      cursor: ns-resize;
+      height: 0;
+      width: 100%;
+      border-bottom-left-radius: 1rem;
+      border-bottom-right-radius: 1rem;
     }
   }
 

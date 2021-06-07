@@ -22,26 +22,25 @@ export default {
     id: {
       type: String,
       required: true,
-      default: ''
+      default: '',
     },
     allowInteractions: {
       type: Boolean,
       required: true,
-      default: false
-    }
+    },
   },
-  data () {
+  data() {
     return {
       options: {
-        history: true
-      }
+        history: true,
+      },
     }
   },
   computed: {
     ...mapState({
-      url: state => state.history.currentPage.url
+      url: (state) => state.history.currentPage.url,
     }),
-    injectScript () {
+    injectScript() {
       // const appPath = remote.app.getPath('appData')
       // Load the inject script
       const injectScriptPath =
@@ -56,16 +55,16 @@ export default {
       }
 
       return injectScriptPath
-    }
+    },
   },
   watch: {
     url: {
       // When the URL is changed, load the new site
-      handler () {
+      handler() {
         this.loadSite()
-      }
+      },
     },
-    allowInteractions (value) {
+    allowInteractions(value) {
       // Toggle frame pointer-events
       const element = this.$refs.frame
       if (value === true) {
@@ -73,9 +72,9 @@ export default {
       } else if (value === false) {
         element.style.pointerEvents = 'none' // Disable interactions with webpage
       }
-    }
+    },
   },
-  mounted () {
+  mounted() {
     const vm = this
 
     // Once the WebView is rendered
@@ -92,25 +91,25 @@ export default {
       // TODO Better way to watch for VueX actions?
       this.unsubscribeAction = this.$store.subscribeAction((action, state) => {
         switch (action.type) {
-        case 'history/reload':
-          this.reload()
-          break
+          case 'history/reload':
+            this.reload()
+            break
 
-        case 'history/back':
-          this.back()
-          break
+          case 'history/back':
+            this.back()
+            break
 
-        case 'history/forward':
-          this.forward()
-          break
+          case 'history/forward':
+            this.forward()
+            break
 
-        default:
-          break
+          default:
+            break
         }
       })
     })
   },
-  beforeDestroy () {
+  beforeDestroy() {
     // Unbind any listeners
     this.unbindEventListeners()
 
@@ -118,7 +117,7 @@ export default {
     this.unsubscribeAction()
   },
   methods: {
-    bindEventListeners () {
+    bindEventListeners() {
       // Remove navigation event
       const frame = this.$refs.frame
       frame.addEventListener('will-navigate', this.willNavigate)
@@ -126,7 +125,7 @@ export default {
       // Listen for incoming events
       this.$bus.$on('REFLEX_SYNC', this.syncResponder)
     },
-    unbindEventListeners () {
+    unbindEventListeners() {
       // Remove navigation event
       const frame = this.$refs.frame
       frame.removeEventListener('will-navigate', this.willNavigate)
@@ -134,7 +133,7 @@ export default {
       // Detach from the frame. Important!
       this.$bus.$off('REFLEX_SYNC', this.syncResponder)
     },
-    syncResponder (args) {
+    syncResponder(args) {
       // Remove navigation event
       const frame = this.$refs.frame
 
@@ -151,29 +150,29 @@ export default {
         // Don't trigger on the origin
         // TODO Tell the Webview to change its state to origin = true
         frame.send('REFLEX_SYNC_setState', {
-          isOrigin: true
+          isOrigin: true,
         })
       } else {
         console.log('REFLEX EVENT:', args)
 
         // Update state
         frame.send('REFLEX_SYNC_setState', {
-          isOrigin: false
+          isOrigin: false,
         })
 
         // Send event back to the frame
         frame.send('REFLEX_SYNC_setDOMEffect', {
-          ...args
+          ...args,
         })
       }
     },
-    reload () {
+    reload() {
       // Reload the current page
       this.loadSite({
-        history: false
+        history: false,
       })
     },
-    back () {
+    back() {
       // Load the previous page
       // const frame = this.$refs.frame
 
@@ -185,7 +184,7 @@ export default {
 
       // Update the URL in the store
       this.$store.commit('history/changeSiteData', {
-        url: pages[nextPage]
+        url: pages[nextPage],
       })
 
       // TODO Improve the way new pages are loaded
@@ -193,7 +192,7 @@ export default {
       // i.e. something like this:
       // store.dispatch("loadNewSite", "site.com")
     },
-    forward () {
+    forward() {
       // Load the next page
       // const frame = this.$refs.frame
 
@@ -205,7 +204,7 @@ export default {
 
       // Update the URL in the store
       this.$store.commit('history/changeSiteData', {
-        url: pages[nextPage]
+        url: pages[nextPage],
       })
 
       // TODO Improve the way new pages are loaded
@@ -219,7 +218,7 @@ export default {
      * By default, saves the URL to the history
      * @param {object} options Accepts a history option. When true, will save URL to history.
      */
-    loadSite (options = { history: true }) {
+    loadSite(options = { history: true }) {
       // const vm = this
       const frame = this.$refs.frame
 
@@ -232,16 +231,16 @@ export default {
 
       // Turn history saving on/off
       switch (options.history) {
-      case true:
-        this.options.history = true
-        break
+        case true:
+          this.options.history = true
+          break
 
-      case false:
-        this.options.history = false
-        break
+        case false:
+          this.options.history = false
+          break
 
-      default:
-        break
+        default:
+          break
       }
 
       // Initialize the event listeners
@@ -250,7 +249,7 @@ export default {
       // Set the URL, start loading
       frame.setAttribute('src', this.url)
     },
-    addListeners () {
+    addListeners() {
       const frame = this.$refs.frame
       frame.addEventListener('did-start-loading', this.loadstart) // loadstart
       frame.addEventListener('did-attach-webview', () => {
@@ -264,7 +263,7 @@ export default {
       frame.addEventListener('did-fail-load', this.loadabort) // Failed to load
       frame.addEventListener('loadabort', this.loadabort) // loadabort
     },
-    removeListeners () {
+    removeListeners() {
       const frame = this.$refs.frame
       frame.removeEventListener('did-start-loading', this.loadstart)
       frame.removeEventListener('dom-ready', this.contentloaded)
@@ -275,23 +274,23 @@ export default {
       frame.removeEventListener('did-fail-load', this.loadabort)
       frame.removeEventListener('loadabort', this.loadabort)
     },
-    loadstart () {
+    loadstart() {
       this.$emit('loadstart') // Show loading spinner
 
       // Change the title to Loading...
       // TODO Add a VueX action for this?
       this.$store.commit('history/changeSiteData', {
-        title: 'Loading...'
+        title: 'Loading...',
       })
     },
-    contentloaded () {
+    contentloaded() {
       const frame = this.$refs.frame
 
       frame.send('bridgeToFrame', {
-        id: this.id
+        id: this.id,
       })
     },
-    onMessageReceived (event) {
+    onMessageReceived(event) {
       if (event.channel === 'REFLEX_SYNC') {
         // BUS: https://binbytes.com/blog/create-global-event-bus-in-nuxtjs
         const data = event.args[0]
@@ -305,7 +304,7 @@ export default {
 
           // Only capture actions while allowed
           this.$bus.$emit('REFLEX_SYNC', {
-            ...data
+            ...data,
           })
         }
 
@@ -314,7 +313,7 @@ export default {
           const { x, y } = data.origin.scrollOffset
           this.$emit('scroll', {
             x,
-            y
+            y,
           })
         }
       } else if (event.channel === 'initiateBridge') {
@@ -325,7 +324,7 @@ export default {
         // TODO Add to VueX Action
         this.$store.commit('history/changeSiteData', {
           title,
-          favicon
+          favicon,
         })
       } else if (event.channel === 'unload') {
         console.log('Unloading')
@@ -334,7 +333,7 @@ export default {
         console.log('Unrecognized channel', event.args[0])
       }
     },
-    loadstop () {
+    loadstop() {
       const frame = this.$refs.frame
       this.$emit('loadend') // Hide loading spinner
 
@@ -348,26 +347,26 @@ export default {
         )
       }
     },
-    loadabort () {
+    loadabort() {
       this.$emit('loadend') // Hide loading spinner
 
       // @TODO: Update with Electron API
       new Notification('Aborted', {
-        body: 'The site stopped loading for some reason.'
+        body: 'The site stopped loading for some reason.',
       })
 
       // Remove the event listeners related to site loading
       this.removeListeners()
     },
-    willNavigate (event) {
+    willNavigate(event) {
       // Handle user clicking on a link inside of the webview
       // TODO This should add a new page to the History
       // TODO Add to VueX Action
       this.$store.commit('history/changeSiteData', {
-        url: event.url
+        url: event.url,
       })
-    }
-  }
+    },
+  },
 }
 </script>
 
@@ -376,10 +375,7 @@ export default {
 webview {
   height: 100%;
   width: 100%;
-  // min-width: 100%;
-  // min-height: 100%;
-  pointer-events: none; // Don't allow by default
   position: relative;
-  // display: block;
+  pointer-events: none; // Prevent interactions/events by default
 }
 </style>

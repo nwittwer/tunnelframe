@@ -8,7 +8,7 @@
       ref="parent"
       :class="{
         'dev-visual-debugger': showCanvasDebugger,
-        'panzoom-exclude': this.panzoomEnabled === false, // Allow pointer-events to child DOM elements when panzoom is disabled
+        'panzoom-exclude': this.panzoomEnabled, // Allow pointer-events when panzoom is disabled
       }"
     >
       <slot />
@@ -25,24 +25,26 @@ import PanzoomControls from './PanzoomControls.vue'
 
 export default {
   components: {
-    PanzoomControls
+    PanzoomControls,
   },
-  data () {
+  data() {
     return {
       DOMElement: null,
-      panzoomInstance: {}
+      panzoomInstance: {},
     }
   },
   computed: {
     ...mapState({
-      showCanvasDebugger: state => state.dev.showCanvasDebugger,
-      panzoomEnabled: state => state.interactions.panzoomEnabled
+      showCanvasDebugger: (state) => state.dev.showCanvasDebugger,
+      panzoomEnabled: (state) => state.interactions.panzoomEnabled,
     }),
-    ...mapGetters('interactions', ['isInteracting'])
+    ...mapGetters('interactions', ['isInteracting']),
   },
   watch: {
     // Watch for changes and change Panzoom accordingly
-    panzoomEnabled (state) {
+    panzoomEnabled(state) {
+      state = true
+
       if (state === true) {
         // Enable panzoom
         this.panzoomInstance.bind() // Add event listeners
@@ -50,7 +52,7 @@ export default {
         this.panzoomInstance.setOptions({
           disablePan: false,
           disableZoom: false,
-          cursor: 'grab'
+          cursor: 'grab',
         })
       } else {
         // Disable panzoom
@@ -59,17 +61,17 @@ export default {
         this.panzoomInstance.setOptions({
           disablePan: true,
           disableZoom: true,
-          cursor: 'default'
+          cursor: 'default',
         })
       }
-    }
+    },
   },
-  mounted () {
+  mounted() {
     // Initialize
     this.DOMElement = this.$refs.parent
     this.$root.$panzoom = Panzoom(this.DOMElement, {
       canvas: true, // Allows parent to control child
-      cursor: 'grab'
+      cursor: 'grab',
     })
 
     // Reference inside of this component
@@ -81,7 +83,7 @@ export default {
     })
   },
   methods: {
-    enableEventListeners () {
+    enableEventListeners() {
       const instance = this.panzoomInstance
       const element = this.DOMElement
       const vm = this
@@ -113,10 +115,10 @@ export default {
      * @param DOMElement DOM element that Panzoom is on
      * @param instance The Panzoom instance
      */
-    wheelHandler (DOMElement, instance, vm) {
+    wheelHandler(DOMElement, instance, vm) {
       DOMElement.parentElement.addEventListener('wheel', onWheel)
 
-      function onWheel (event) {
+      function onWheel(event) {
         if (!vm.panzoomEnabled) return false // Only do this if Panzoom is enabled
 
         // Prevent default scroll event
@@ -132,7 +134,7 @@ export default {
 
           const newPan = {
             x: currentPan.x - event.deltaX,
-            y: currentPan.y - event.deltaY
+            y: currentPan.y - event.deltaY,
           }
 
           instance.pan(newPan.x, newPan.y)
@@ -144,23 +146,23 @@ export default {
      * @param DOMElement DOM element that Panzoom is on
      * @param instance The Panzoom instance
      */
-    mouseHandlers (DOMElement, instance, vm) {
+    mouseHandlers(DOMElement, instance, vm) {
       // TODO These DO NOT WORK
       const parentElement = DOMElement.parentElement
 
       // Emit start events
       const onEvents = ['mousedown', 'touchstart', 'gesturestart']
-      onEvents.forEach(name => {
+      onEvents.forEach((name) => {
         parentElement.addEventListener(name, startEvents)
       })
 
       const offEvents = ['mouseup', 'touchend', 'gestureend']
-      offEvents.forEach(name => {
+      offEvents.forEach((name) => {
         parentElement.removeEventListener(name, startEvents)
         parentElement.addEventListener(name, endEvents)
       })
 
-      function startEvents (e) {
+      function startEvents(e) {
         // Only continue if Panzoom is enabled
         if (vm.panzoomEnabled === false) {
           // e.stopPropogation()
@@ -168,33 +170,33 @@ export default {
         }
 
         vm.panzoomInstance.setOptions({
-          cursor: 'grabbing'
+          cursor: 'grabbing',
         })
 
         vm.$store.commit('interactions/interactionSetState', {
           key: 'isPanzooming',
-          value: true
+          value: true,
         })
       }
 
-      function endEvents (e) {
+      function endEvents(e) {
         vm.panzoomInstance.setOptions({
-          cursor: 'grab'
+          cursor: 'grab',
         })
 
         vm.$store.commit('interactions/interactionSetState', {
           key: 'isPanzooming',
-          value: false
+          value: false,
         })
 
         parentElement.removeEventListener(name, endEvents)
       }
     },
-    fitToScreen () {
+    fitToScreen() {
       // TODO Re-attach fitToScreen
       // this.panzoomInstance.fitToScreen();
-    }
-  }
+    },
+  },
 }
 </script>
 
