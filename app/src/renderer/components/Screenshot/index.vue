@@ -48,32 +48,32 @@ import * as capture from './capture.js'
 export default {
   name: 'Screenshots',
 
-  data () {
+  data() {
     return {
       isScreenshotMode: false,
-      filePath: ''
+      filePath: '',
     }
   },
 
   computed: {
     // Bind to our Vuex Store's URL value
-    artboards () {
+    artboards() {
       return this.$store.state.artboards.list
     },
-    selectedArtboards () {
+    selectedArtboards() {
       return this.$store.state.selectedArtboards
     },
     ...mapState({
-      selectedArtboards: state => state.selectedArtboards
-    })
+      selectedArtboards: (state) => state.selectedArtboards,
+    }),
   },
 
   methods: {
-    clearAllSelected () {
+    clearAllSelected() {
       this.$store.dispatch('selectedArtboards/selectedArtboardsEmpty')
     },
 
-    async screenshotAll () {
+    async screenshotAll() {
       try {
         await capture.captureAll(this)
       } catch (err) {
@@ -81,7 +81,7 @@ export default {
       }
     },
 
-    async screenshotSelected () {
+    async screenshotSelected() {
       try {
         await capture.captureMultiple(this.selectedArtboards)
       } catch (err) {
@@ -89,11 +89,14 @@ export default {
       }
     },
 
-    copyToClipboard () {
-      capture.copyToClipboard(this.selectedArtboards)
+    async copyToClipboard() {
+      await capture.copyToClipboard(this.selectedArtboards).catch((err) => {
+        console.error(err)
+      })
       // TODO Notify the user when the image has been saved to clipboard
-    }
-  }
+      // TODO Notify the user if there's an error copying to clipboard
+    },
+  },
 }
 </script>
 
